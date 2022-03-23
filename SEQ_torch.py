@@ -74,13 +74,6 @@ class SEQ():
         
         q_values_ = self.target_q_network(states_).detach()
         
-        # Sarsa
-        # actions_, q_values_ = self.choose_action(states_, i, target_network=True)
-        # backup = rewards + self.discount * T.tensor(q_values_.squeeze()) * (1 - terminals)
-        
-        # Expected Sarsa
-        # backup = rewards + self.discount * T.amax(q_values_, dim=1) * (1 - terminals)
-        # Q-Learning
         backup = rewards + self.discount * T.amax(q_values_, dim=1) * (1 - terminals)
         
         self.writer.add_scalar('Loss/backup', backup.sum().item(), i)
