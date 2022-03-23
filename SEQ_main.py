@@ -19,7 +19,7 @@ if __name__ == '__main__':
     env.action_space.sample()
   
     
-    num_episodes = 500
+    num_episodes = 1000
     batch_size = 128
     # Init agent 
     agent = SEQ(state_dim=state_dim, 
@@ -39,8 +39,10 @@ if __name__ == '__main__':
     best_average_reward = float('-inf')
     episode_reward = []
     episode_steps = []
+    
     for i in range(num_episodes):
-        
+        """In each episode, the agent runs on the environment 
+        until it falls or reaches the maximum number of steps in an episode"""
         state= env.reset()
         terminal = False
         rewards_sum = 0
@@ -54,16 +56,14 @@ if __name__ == '__main__':
             rewards_sum += reward
             steps_sum += 1
             agent.buffer.store(state, action, reward, state_, terminal)
-            # if terminal:
-                # print(reward)
+            
             if agent.buffer.counter > batch_size:
                 batch = agent.buffer.sample()
                 agent.learn(batch, i)
             state = state_ 
             
-            # env.render()
+            env.render()
             
-        # print(rewards_sum)
         writer.add_scalar('Reward/train', rewards_sum, i)
         episode_reward.append(rewards_sum)
         episode_steps.append(steps_sum)
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         if best_reward_tmp > best_average_reward:
             best_average_reward = best_reward_tmp 
             agent.save_model('Q_learning')
-            # print('Saving a model with a best average reward: ', best_average_reward)
+            print('Saving a model with a best average reward: ', best_average_reward)
         
         if i % 10 == 0:
             agent.target_q_network = deepcopy(agent.q_network)

@@ -2,11 +2,12 @@ import numpy as np
 import torch as T
 import torch.nn as nn
 import gym
-from networks import Q_network
 from utilities import argmax
 from copy import deepcopy
 from buffer import ReplayBuffer
 import math 
+
+
 class SEQ():
     
     
@@ -28,9 +29,7 @@ class SEQ():
         
         # Buffer 
         self.buffer = ReplayBuffer(self.buffer_size, self.batch_size, self.state_dim, self.action_dim)
-        # Q Network
-        self.q_network = Q_network(self.layers, self.lr, nn.ReLU)
-        
+        # Q Network        
         self.q_network = nn.Sequential(
             nn.Linear(4, 32),
             nn.ReLU(),
@@ -45,13 +44,10 @@ class SEQ():
     def save_model(self, name):
         T.save(self.q_network.state_dict(), self.checkpoint_file + name)
         
-    def choose_action(self, state, i, target_network=False):
+    def choose_action(self, state, i):
         epsilon_threshold = self.epsilon_end + (self.epsilon_start - self.epsilon_end) * math.exp(-1. * self.epsilon_steps_done / self.epsilon_decay)
         self.epsilon_steps_done += 1
-        if target_network:
-            q_values = self.target_q_network(state).detach().numpy()
-        else:
-            q_values = self.q_network(state).detach().numpy()
+        q_values = self.q_network(state).detach().numpy()
         if np.random.random() > epsilon_threshold:
             
             action_index = argmax(q_values)
@@ -62,7 +58,6 @@ class SEQ():
     
     def learn(self, batch, i):
         states, actions, rewards, states_, terminals = batch
-        # print(sum(rewards))
         states = T.tensor(states)
         actions = T.tensor(actions).unsqueeze(-1)
         rewards = T.tensor(rewards)
@@ -73,18 +68,13 @@ class SEQ():
         
         
         q_values_ = self.target_q_network(states_).detach()
-        
         backup = rewards + self.discount * T.amax(q_values_, dim=1) * (1 - terminals)
         
         self.writer.add_scalar('Loss/backup', backup.sum().item(), i)
         
         loss = self.mse(backup.detach(), q_values.squeeze())
         self.writer.add_scalar('Loss/q_net_loss', loss.item(), i)
-        # print(loss)
         
-        # self.q_network.optimizer.zero_grad()
-        # loss.backward()
-        # self.q_network.optimizer.step()
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
